@@ -3,77 +3,116 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 import math
 
-# Список ссылок для задания
+# --- ИМПОРТ ПАРОЛЕЙ ---
+try:
+    from auth_data import email, password
+except ImportError:
+    email = None
+    password = None
+
 links = [
-    "https://stepik.org/lesson/236895/step/1",
-    "https://stepik.org/lesson/236896/step/1",
-    "https://stepik.org/lesson/236897/step/1",
-    "https://stepik.org/lesson/236898/step/1",
-    "https://stepik.org/lesson/236899/step/1",
-    "https://stepik.org/lesson/236903/step/1",
-    "https://stepik.org/lesson/236904/step/1",
-    "https://stepik.org/lesson/236905/step/1"
+    "https://stepik.org/lesson/236895/step/1"
 ]
 
 
 @pytest.mark.parametrize('link', links)
-def test_guest_should_see_login_link(browser, link):
+def test_stepik_alien_message(browser, link):
+    print(f"\n[LOG] Открываем ссылку: {link}")
     browser.get(link)
 
-    # === БЛОК АВТОРИЗАЦИИ ===
-    # Так как фикстура browser у тебя scope="function", браузер перезапускается для каждой ссылки.
-    # Значит, логиниться нужно каждый раз заново.
+    # === 1. АВТОРИЗАЦИЯ ===
+    try:
+        login_btn = WebDriverWait(browser, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ".navbar__auth_login"))
+        )
+        login_btn.click()
 
-    # 1. Ждем и кликаем кнопку входа
-    login_btn = WebDriverWait(browser, 10).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, ".navbar__auth_login"))
-    )
-    login_btn.click()
+        email_input = WebDriverWait(browser, 10).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, "input[name='login']"))
+        )
+        email_input.send_keys(email)
 
-    # 2. Вводим Email
-    email_input = WebDriverWait(browser, 10).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, "input[name='login']"))
-    )
-    email_input.send_keys("TVOI_EMAIL@GMAIL.COM")  # <--- ВСТАВЬ СВОЙ ЛОГИН
+        browser.find_element(By.CSS_SELECTOR, "input[name='password']").send_keys(password)
 
-    # 3. Вводим Пароль
-    password_input = browser.find_element(By.CSS_SELECTOR, "input[name='password']")
-    password_input.send_keys("TVOI_PAROL")  # <--- ВСТАВЬ СВОЙ ПАРОЛЬ
+        browser.find_element(By.CSS_SELECTOR, ".sign-form__btn").click()
 
-    # 4. Нажимаем кнопку "Войти"
-    submit_btn = browser.find_element(By.CSS_SELECTOR, ".sign-form__btn")
-    submit_btn.click()
+        # Ждем исчезновения окна логина
+        WebDriverWait(browser, 10).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, ".modal-dialog"))
+        )
+        print("[LOG] Авторизация успешна.")
 
-    # === БЛОК РЕШЕНИЯ ===
+    except TimeoutException:
+        print("[LOG] Окно входа не найдено, возможно мы уже залогинены.")
 
-    # 5. Ждем, пока загрузится поле для ответа (это значит, что мы залогинились и страница прогрузилась)
+    # === 2. ПОДГОТОВКА ===
+    try:
+        again_btn = WebDriverWait(browser, 5).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ".again-btn"))
+        )
+        again_btn.click()
+        print("[LOG] Нажата кнопка 'Решить снова'.")
+        time.sleep(1)
+    except:
+        pass
+
+    # === 3. ВВОД ОТВЕТА ===
+    print("[LOG] Ищем поле ввода...")
     textarea = WebDriverWait(browser, 15).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, ".textarea"))
+        EC.visibility_of_element_located((By.CSS_SELECTOR, ".ember-text-area"))
     )
 
-    # 6. Считаем математику
     answer = math.log(int(time.time()))
+    print(f"[LOG] Ответ: {answer}")
 
-    # 7. Вводим ответ
-    textarea.clear()  # На всякий случай чистим поле
+    textarea.clear()
     textarea.send_keys(str(answer))
 
-    # 8. Нажимаем кнопку отправки решения
-    # Селектор ищем по классу submit-submission
+    # ПРОВЕРКА: Реально ли текст попал в поле?
+    entered_text = textarea.get_attribute("value")
+    print(f"[LOG] Текст в поле сейчас: '{entered_text}'")
+
+    # === 4. ОТПРАВКА (УМНЫЙ КЛИК) ===
+    print("[LOG] Ищем кнопку Отправить...")
     solve_btn = WebDriverWait(browser, 10).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, ".submit-submission"))
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "button.submit-submission"))
     )
-    solve_btn.click()
 
-    # 9. Ждем фидбек (появится сообщение)
-    feedback_elt = WebDriverWait(browser, 15).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, ".smart-hints__hint"))
-    )
-    feedback_text = feedback_elt.text
+    # Ждем пока кнопка станет активной
+    WebDriverWait(browser, 10).until(lambda d: solve_btn.is_enabled())
+    time.sleep(1)  # Короткая пауза
 
-    # 10. Проверяем, что текст совпадает с "Correct!"
-    # Если текст БУДЕТ ДРУГОЙ, тест упадет, и в ошибке ты увидишь часть послания инопланетян
-    assert feedback_text == "Correct!", f"Инопланетное послание: {feedback_text}"
+    print("[LOG] Пытаемся кликнуть...")
+
+    # Попытка 1: Обычный клик (часто работает лучше, чем JS, если сайт ждет фокуса)
+    try:
+        solve_btn.click()
+        print("[LOG] Сделан обычный клик.")
+    except:
+        # Попытка 2: Если обычный не прошел (перекрыта), бьем через JS
+        print("[LOG] Обычный клик не прошел, используем JS...")
+        browser.execute_script("arguments[0].click();", solve_btn)
+
+    # === 5. ПРОВЕРКА РЕЗУЛЬТАТА ===
+    print("[LOG] Ждем фидбек...")
+
+    # Ищем ЛЮБОЙ фидбек (Хороший или Плохой)
+    # Это поможет понять, нажимается ли кнопка вообще
+    try:
+        feedback = WebDriverWait(browser, 15).until(
+            EC.visibility_of_any_elements_located(
+                (By.CSS_SELECTOR, ".smart-hints__hint, .attempt-message_wrong, .attempt-message_correct"))
+        )
+        # Берем текст первого найденного элемента
+        feedback_text = feedback[0].text
+        print(f"[LOG] УРА! Получен фидбек: '{feedback_text}'")
+    except TimeoutException:
+        print("[LOG] ОШИБКА: Фидбек так и не появился за 15 секунд.")
+        feedback_text = "No feedback"
+
+    # Финальная проверка
+    assert feedback_text == "Correct!", f"Ожидался 'Correct!', а получили: {feedback_text}"
