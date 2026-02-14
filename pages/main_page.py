@@ -1,7 +1,7 @@
-from pages.base_page import BasePage
+from pages.base_page import BasePage # Полный путь без точек
 from selenium.webdriver.common.by import By
 
 class MainPage(BasePage):
-    def go_to_login_page(self):
-        login_link = self.browser.find_element(By.CSS_SELECTOR, "#login_link")
-        login_link.click()
+    def should_be_login_link(self):
+        # Если элемента нет, сработает наше сообщение после запятой
+        assert self.is_element_present(By.CSS_SELECTOR, "#login_link"), "Login link is not presented"
