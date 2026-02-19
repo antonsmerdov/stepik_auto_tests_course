@@ -1,16 +1,16 @@
 from pages.product_page import ProductPage
 import pytest
 
-# Ссылка с промо-акцией
-link = "http://selenium1py.pythonanywhere.com/catalogue/the-shellcoders-handbook_209/?promo=newYear"
+# Новая ссылка из задания
+link = "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=newYear2019"
 
 
 def test_guest_can_add_product_to_basket(browser):
-    page = ProductPage(browser, link)  # Инициализируем Page Object
-    page.open()  # Открываем страницу
-    page.add_product_to_basket()  # Жмем кнопку "Добавить в корзину"
-    page.solve_quiz_and_get_code()  # Решаем задачку в алерте (метод из BasePage)
+    page = ProductPage(browser, link)
+    page.open()
+    page.add_product_to_basket()
+    page.solve_quiz_and_get_code()
 
-    # Запускаем проверки
+    # Эти методы сами скачают название книги ("Coders at Work") и сверят его
     page.should_be_message_about_adding()
     page.should_be_message_basket_total()
