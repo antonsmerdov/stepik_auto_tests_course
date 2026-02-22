@@ -1,27 +1,26 @@
 import pytest
 from pages.product_page import ProductPage
 
+link = "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/"
 
-# 1. Добавляем декоратор со списком всех 10 ссылок
-@pytest.mark.parametrize('link', [
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer0",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer1",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer2",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer3",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer4",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer5",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer6",
-    pytest.param("http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer7",
-                 marks=pytest.mark.xfail),
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer8",
-    "http://selenium1py.pythonanywhere.com/catalogue/coders-at-work_207/?promo=offer9"
-])
-# 2. Обязательно передаем link как аргумент в функцию!
-def test_guest_can_add_product_to_basket(browser, link):
-    # 3. Внутри ничего не меняем, логика остается старой
+@pytest.mark.xfail(reason="Так задумано: сообщение появляется после добавления")
+def test_guest_cant_see_success_message_after_adding_product_to_basket(browser):
     page = ProductPage(browser, link)
     page.open()
     page.add_product_to_basket()
-    page.solve_quiz_and_get_code()
-    page.should_be_message_about_adding()
-    page.should_be_message_basket_total()
+    # Проверяем, что сообщения нет (а оно появится, поэтому тест упадет и это ок)
+    page.should_not_be_success_message()
+
+def test_guest_cant_see_success_message(browser):
+    page = ProductPage(browser, link)
+    page.open()
+    # Просто открыли страницу и сразу проверяем, что сообщения нет (тест пройдет)
+    page.should_not_be_success_message()
+
+@pytest.mark.xfail(reason="Так задумано: сообщение не исчезает само")
+def test_message_disappeared_after_adding_product_to_basket(browser):
+    page = ProductPage(browser, link)
+    page.open()
+    page.add_product_to_basket()
+    # Ждем, что сообщение исчезнет (а оно не исчезнет, тест упадет по таймауту)
+    page.should_disappear_success_message()

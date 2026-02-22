@@ -1,8 +1,9 @@
-from selenium.common.exceptions import NoSuchElementException  # ВАЖНО: импортируем ошибку
-from selenium.webdriver.common.by import By
 import math  # <--- Добавь это в начало файла!
 from selenium.common.exceptions import NoSuchElementException, \
     NoAlertPresentException  # <--- Добавь NoAlertPresentException
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 class BasePage():
@@ -38,3 +39,27 @@ class BasePage():
             alert.accept()
         except NoAlertPresentException:
             print("No second alert presented")
+
+    def is_not_element_present(self, how, what, timeout=4):
+        # Метод ждет появления элемента в течение timeout секунд.
+        # Если элемент так и НЕ ПОЯВИЛСЯ, падает TimeoutException.
+        # Мы ловим эту ошибку и возвращаем True (всё ок, элемента нет).
+        try:
+            WebDriverWait(self.browser, timeout).until(EC.presence_of_element_located((how, what)))
+        except TimeoutException:
+            return True
+
+        # Если элемент появился, код дойдет сюда, и мы вернем False (тест упадет).
+        return False
+
+    def is_disappeared(self, how, what, timeout=4):
+        # Метод ждет, пока элемент НЕ ИСЧЕЗНЕТ (until_not) в течение timeout секунд.
+        # Если он исчез вовремя, мы возвращаем True.
+        try:
+            WebDriverWait(self.browser, timeout, 1, TimeoutException). \
+                until_not(EC.presence_of_element_located((how, what)))
+        except TimeoutException:
+            # Если время вышло, а элемент всё еще торчит на экране - возвращаем False.
+            return False
+
+        return True
