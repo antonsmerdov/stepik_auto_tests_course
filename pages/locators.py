@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 class MainPageLocators():
     # Локатор для ссылки на главной странице
     LOGIN_LINK = (By.CSS_SELECTOR, "#login_link")
+    LOGIN_LINK_INVALID = (By.CSS_SELECTOR, "#login_link_inc")
 
 class LoginPageLocators():
     # Локаторы для форм на странице логина
